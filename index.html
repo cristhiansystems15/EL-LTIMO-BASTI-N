@@ -2,7 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- Adaptación completa al celular -->
+  <meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1.0,
+             maximum-scale=5.0,
+             user-scalable=yes"
+  >
 
   <title>EL ÚLTIMO BASTIÓN</title>
 
@@ -11,35 +19,162 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
+      min-height: 100%;
+      background: #111;
+      font-family: Arial, sans-serif;
     }
 
-    iframe {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      width: 100dvw;
-      height: 100dvh;
-      border: none;
+    body {
+      overflow-x: hidden;
+    }
+
+    #viewer {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page {
       display: block;
+      width: 100%;
+      height: auto;
+      margin: 0 auto 8px;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      background: #111;
+      z-index: 10;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    @media (min-width: 700px) {
+      .page {
+        max-width: 900px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <iframe
-    src="./EL%20ULTIMO%20BASTION%20FICHA.pdf#view=FitH"
-    title="EL ÚLTIMO BASTIÓN">
-  </iframe>
+  <div id="loading">
+    Cargando EL ÚLTIMO BASTIÓN…
+  </div>
+
+  <div id="viewer"></div>
+
+  <script type="module">
+
+    import * as pdfjsLib from
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+    const pdfURL =
+      "./EL%20ULTIMO%20BASTION%20FICHA.pdf";
+
+    const viewer =
+      document.getElementById("viewer");
+
+    const loading =
+      document.getElementById("loading");
+
+    const devicePixelRatio =
+      Math.min(window.devicePixelRatio || 1, 2);
+
+    try {
+
+      const pdf =
+        await pdfjsLib.getDocument(pdfURL).promise;
+
+      for (let numero = 1; numero <= pdf.numPages; numero++) {
+
+        const page =
+          await pdf.getPage(numero);
+
+        const original =
+          page.getViewport({
+            scale: 1
+          });
+
+        /*
+          Calculamos automáticamente el tamaño
+          según el ancho REAL de la pantalla.
+        */
+
+        const anchoPantalla =
+          window.innerWidth - 2;
+
+        const escala =
+          anchoPantalla / original.width;
+
+        const viewport =
+          page.getViewport({
+            scale: Math.max(escala, 0.8) *
+                   devicePixelRatio
+          });
+
+        const canvas =
+          document.createElement("canvas");
+
+        canvas.className = "page";
+
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+
+        canvas.width =
+          Math.floor(viewport.width);
+
+        canvas.height =
+          Math.floor(viewport.height);
+
+        viewer.appendChild(canvas);
+
+        const contexto =
+          canvas.getContext("2d");
+
+        await page.render({
+          canvasContext: contexto,
+          viewport: viewport
+        }).promise;
+      }
+
+      loading.remove();
+
+    } catch (error) {
+
+      console.error(error);
+
+      loading.innerHTML =
+        "No se pudo cargar el documento.<br><br>" +
+        "<strong>Toca aquí para abrir el PDF</strong>";
+
+      loading.style.cursor = "pointer";
+
+      loading.onclick = function () {
+        window.location.href = pdfURL;
+      };
+    }
+
+  </script>
 
 </body>
 </html>
